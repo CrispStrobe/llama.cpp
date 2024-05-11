@@ -4436,13 +4436,19 @@ static void llm_load_vocab(
                 tokenizer_pre == "qwen2") {
                 vocab.type_pre = LLAMA_VOCAB_PRE_TYPE_QWEN2;
             } else if (
+                tokenizer_pre == "phi2") {
+                vocab.type_pre = LLAMA_VOCAB_PRE_TYPE_PHI2;
+            } else if (
                 tokenizer_pre == "olmo") {
                 vocab.type_pre = LLAMA_VOCAB_PRE_TYPE_OLMO;
             } else if (
                 tokenizer_pre == "dbrx") {
                 vocab.type_pre = LLAMA_VOCAB_PRE_TYPE_DBRX;
             } else {
-                throw std::runtime_error(format("unknown pre-tokenizer type: '%s'", tokenizer_pre.c_str()));
+                LLAMA_LOG_WARN("%s: Encountered unknown pre-tokenizer type. Falling back to default. \n", __func__);
+                LLAMA_LOG_WARN("%s: GENERATION QUALITY MIGHT BE DEGRADED!        \n", __func__);               
+                vocab.type_pre = LLAMA_VOCAB_PRE_TYPE_DEFAULT;
+                // throw std::runtime_error(format("unknown pre-tokenizer type: '%s'", tokenizer_pre.c_str()));
             }
         } else {
             vocab.type_pre = LLAMA_VOCAB_PRE_TYPE_DEFAULT;
@@ -12278,7 +12284,7 @@ struct llm_tokenizer_bpe {
                     case LLAMA_VOCAB_PRE_TYPE_DEEPSEEK_LLM:
                         word_collection = unicode_regex_split(text, {
                             "[\r\n]",
-                            "\\s?[A-Za-zµÀ-ÖØ-öø-ƺƼ-ƿǄ-ʓʕ-ʯͰ-ͳͶͷͻ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-ՖႠ-ჅᎠ-Ᏽᏸ-ᏽᲐ-ᲺᲽ-Ჿᴀ-ᴫᵫ-ᵷᵹ-ᶚḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℴℹℼ-ℿⅅ-ⅉⅎↃↄⰀ-ⱻⱾ-ⳤⳫ-ⳮⳲⳳꙀ-ꙭꚀ-ꚛꜢ-ꝯꝱ-ꞇꞋ-ꞎꭰ-ꮿﬀ-ﬆﬓ-ﬗＡ-Ｚａ-ｚ𐐀-𐑏𐒰-𐓓𐓘-𐓻𐲀-𐲲𐳀-𐳲𑢠-𑣟𞤀-𞥃]+",
+                            "\\s?[A-Za-zµÀ-ÖØ-öø-ƺƼ-ƿǄ-ʓʕ-ʯͰ-ͳͶͷͻ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-ՖႠ-ჅᎠ-Ᏽᏸ-ᏽᲐ-ᲺᲽ-Ჿᴀ-ᴫᵫ-ᵷᵹ-ᶚḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℴℹℼ-ℿⅅ-ⅉⅎↃↄⰀ-ⱻⱾ-ⳤⳫ-ⳮⳲⳳꙀ-ꙭꚀ-ꚛꜢ-ꝯꝱ-ꞇꞋ-ꞎꭰ-ꮿﬀ-ﬆﬓ-ﬗＡ-Ｚａ-ｚ𐐀-𐑏𐒰-𐓓𐓘-𐓻𐲀-𐲲𐳀-𐳲𑢠-𑣟𞤀-𞥃]+",
                             "\\s?[!-/:-~！-／：-～‘-‟　-。]+",
                             "\\s+$",
                             "[一-龥ࠀ-一가-퟿]+",
@@ -12333,6 +12339,7 @@ struct llm_tokenizer_bpe {
                             "(?:'[sS]|'[tT]|'[rR][eE]|'[vV][eE]|'[mM]|'[lL][lL]|'[dD])|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
                         });
                         break;
+                    case LLAMA_VOCAB_PRE_TYPE_PHI2:
                     default:
                         // default regex for BPE tokenization pre-processing
                         word_collection = unicode_regex_split(text, {
