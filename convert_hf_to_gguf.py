@@ -83,10 +83,10 @@ class Model:
         self.endianess = gguf.GGUFEndian.BIG if is_big_endian else gguf.GGUFEndian.LITTLE
         self.use_temp_file = use_temp_file
         self.lazy = not eager
-        self.part_names = Model.get_model_part_names(self.dir_model, "model", ".safetensors")
+        self.part_names = Model.get_model_part_names(self.dir_model, ["model"], [".safetensors"])
         self.is_safetensors = len(self.part_names) > 0
         if not self.is_safetensors:
-            self.part_names = Model.get_model_part_names(self.dir_model, "pytorch_model", ".bin")
+            self.part_names = Model.get_model_part_names(self.dir_model, ["pytorch_model"], [".bin"])
         self.hparams = Model.load_hparams(self.dir_model)
         self.block_count = self.find_hparam(["n_layers", "num_hidden_layers", "n_layer", "num_layers"])
         self.tensor_map = gguf.get_tensor_name_map(self.model_arch, self.block_count)
@@ -447,14 +447,46 @@ class Model:
         self.gguf_writer.close()
 
     @staticmethod
-    def get_model_part_names(dir_model: Path, prefix: str, suffix: str) -> list[str]:
+    def get_model_part_names(dir_model: Path, prefixes: list[str], suffixes: list[str]) -> list[str]:
+        """
+        Retrieves the list of model part filenames from the model directory.
+        Prioritizes 'model-XXXX-of-XXXX.safetensors' files over 'consolidated.safetensors'.
+        
+        Parameters:
+        - dir_model (Path): Path to the model directory.
+        - prefixes (list[str]): List of filename prefixes to match.
+        - suffixes (list[str]): List of filename suffixes to match.
+        
+        Returns:
+        - list[str]: Sorted list of model part filenames.
+        """
         part_names: list[str] = []
+        
+        # Collect files matching the given prefixes and suffixes
         for filename in os.listdir(dir_model):
-            if filename.startswith(prefix) and filename.endswith(suffix):
+            if any(filename.startswith(prefix) for prefix in prefixes) and any(filename.endswith(suffix) for suffix in suffixes):
                 part_names.append(filename)
-
+            elif filename == "consolidated.safetensors":
+                part_names.append(filename)
+        
+        # Sort the list for consistency
         part_names.sort()
-
+        
+        # Check if both split files and 'consolidated.safetensors' are present
+        split_files = [f for f in part_names if f.startswith("model-") and f.endswith(".safetensors")]
+        consolidated_present = "consolidated.safetensors" in part_names
+        
+        if split_files and consolidated_present:
+            logger.debug("Both split model files and 'consolidated.safetensors' found. Ignoring 'consolidated.safetensors'.")
+            # Remove 'consolidated.safetensors' from part_names
+            part_names = [f for f in part_names if f != "consolidated.safetensors"]
+        
+        # Final sort after potential removal
+        part_names.sort()
+        
+        if not part_names:
+            logger.warning("No model weight files found in the directory.")
+        
         return part_names
 
     @staticmethod
