@@ -4362,11 +4362,12 @@ def split_str_to_n_bytes(split_str: str) -> int:
 def main() -> None:
     args = parse_args()
 
+    # we enforce logging for smoother usage in Kaggle environments etc
     if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG, force=True)
     else:
-        logging.basicConfig(level=logging.INFO)
-
+        logging.basicConfig(level=logging.INFO, force=True)
+    
     dir_model = args.model
 
     if not dir_model.is_dir():
