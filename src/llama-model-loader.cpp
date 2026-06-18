@@ -777,6 +777,13 @@ const struct ggml_tensor * llama_model_loader::check_tensor_dims(const std::stri
                 break;
             }
         }
+        if (!is_ok && name.find(".shortconv.conv.weight") != std::string::npos) {
+            int64_t expected_nelements = 1;
+            for (int64_t dim : ne) {
+                expected_nelements *= dim;
+            }
+            is_ok = expected_nelements == ggml_nelements(cur);
+        }
         if (!is_ok) {
             throw std::runtime_error(
                     format("%s: tensor '%s' has wrong shape; expected %s, got %s",

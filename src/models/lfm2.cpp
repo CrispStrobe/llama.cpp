@@ -162,6 +162,9 @@ ggml_tensor * llm_build_lfm2::build_shortconv_block(ggml_tensor * cur, llm_graph
                                                         kv_head * d_conv * n_embd * ggml_element_size(new_conv))));
 
     auto * conv_kernel = model.layers[il].shortconv.conv;
+    if (!ggml_is_matrix(conv_kernel)) {
+        conv_kernel = ggml_reshape_2d(ctx0, conv_kernel, hparams.n_shortconv_l_cache, hparams.n_embd);
+    }
     auto * conv_out    = ggml_ssm_conv(ctx0, bx, conv_kernel);
     cb(conv_out, "model.layers.{}.conv.conv", il);
 

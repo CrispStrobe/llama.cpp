@@ -238,6 +238,9 @@ static bool weight_buft_supported(const llama_hparams & hparams, ggml_tensor * w
             } break;
         case GGML_OP_SSM_CONV:
             {
+                if (!ggml_is_matrix(w)) {
+                    w = ggml_reshape_2d(ctx, w, w->ne[0], ggml_nelements(w) / w->ne[0]);
+                }
                 const int64_t n_seq_tokens = 512;
                 const int64_t n_seqs       = 3;
                 ggml_tensor * conv_x = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, w->ne[0] - 1 + n_seq_tokens, w->ne[1], n_seqs);
@@ -2119,7 +2122,12 @@ void llama_model::load_hparams(llama_model_loader & ml) {
                 }
             } break;
         case LLM_ARCH_LFM2:
+        case LLM_ARCH_LFM2_BIDIR:
             {
+                if (arch == LLM_ARCH_LFM2_BIDIR) {
+                    ml.get_key(LLM_KV_ATTENTION_CAUSAL,        hparams.causal_attn);
+                    ml.get_key(LLM_KV_POOLING_TYPE,            hparams.pooling_type, false);
+                }
                 ml.get_key(LLM_KV_SHORTCONV_L_CACHE,           hparams.n_shortconv_l_cache);
                 ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS, hparams.f_norm_rms_eps);
                 for (uint32_t il = 0; il < hparams.n_layer; ++il) {
@@ -6131,6 +6139,7 @@ bool llama_model::load_tensors(llama_model_loader & ml) {
                     }
                 } break;
             case LLM_ARCH_LFM2:
+            case LLM_ARCH_LFM2_BIDIR:
             case LLM_ARCH_LFM2MOE:
                 {
                     tok_embd = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, "weight"), {n_embd, n_vocab}, 0);
@@ -7395,6 +7404,7 @@ ggml_cgraph * llama_model::build_graph(const llm_graph_params & params) const {
                 llm = std::make_unique<llm_build_falcon_h1>(*this, params);
             } break;
         case LLM_ARCH_LFM2:
+        case LLM_ARCH_LFM2_BIDIR:
         case LLM_ARCH_LFM2MOE:
             {
                 llm = std::make_unique<llm_build_lfm2>(*this, params);
@@ -7643,6 +7653,7 @@ llama_rope_type llama_model_rope_type(const llama_model * model) {
         case LLM_ARCH_OPENAI_MOE:
         case LLM_ARCH_HUNYUAN_DENSE:
         case LLM_ARCH_LFM2:
+        case LLM_ARCH_LFM2_BIDIR:
         case LLM_ARCH_LFM2MOE:
         case LLM_ARCH_SMALLTHINKER:
         case LLM_ARCH_GLM4_MOE:
